@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "ts-node-dev src",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "tsc"
+    "build": "tsc",
+    "deploy": "./deploy.sh",
+    "destroy": "cd ./terraform && terraform destroy -auto-approve"
   },
   "author": "Lucas Canavan",
   "dependencies": {
