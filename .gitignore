@@ -3,3 +3,4 @@ dist
 temp
 .terraform*
 terraform.tfstate*
+produles

@@ -1,27 +1,5 @@
-resource "aws_lambda_function_url" "url1" {
-  function_name      = aws_lambda_function.node-lambda-furl.function_name
-  authorization_type = "NONE"
-  cors {
-    allow_credentials = true
-    allow_origins     = ["*"]
-    allow_methods     = ["*"]
-    allow_headers     = ["date", "keep-alive"]
-    expose_headers    = ["keep-alive", "date"]
-    max_age           = 86400
-  }
-}
-
-resource "aws_lambda_function" "node-lambda-furl" {
-  filename         = data.archive_file.zip.output_path
-  source_code_hash = data.archive_file.zip.output_base64sha256
-  function_name    = "node-lambda-furl"
-  role             = aws_iam_role.iam_for_lambda.arn
-  handler          = "index.handler"
-  runtime          = "nodejs16.x"
-}
-
-resource "aws_iam_role" "iam_for_lambda" {
-  name = "iam_for_lambda"
+resource "aws_iam_role" "lambda_role" {
+  name = "lambda_role"
 
   assume_role_policy = <<EOF
 {
@@ -40,8 +18,61 @@ resource "aws_iam_role" "iam_for_lambda" {
 EOF
 }
 
-data "archive_file" "zip" {
-  type        = "zip"
-  source_dir = "${path.module}/../dist/"
-  output_path = "${path.module}/../temp/deploy.zip"
+resource "aws_iam_role_policy" "lambda_policy" {
+	name = "lambda_policy"
+	role = aws_iam_role.lambda_role.id
+
+	policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+		{
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ],
+      "Resource": "*",
+      "Effect": "Allow"
+    }
+  ]
+}
+EOF
+}
+
+resource "aws_lambda_function_url" "url1" {
+  function_name      = aws_lambda_function.node-lambda-furl.function_name
+  authorization_type = "NONE"
+  cors {
+    allow_credentials = true
+    allow_origins     = ["*"]
+    allow_methods     = ["*"]
+    allow_headers     = ["date", "keep-alive"]
+    expose_headers    = ["keep-alive", "date"]
+    max_age           = 86400
+  }
+}
+
+resource "aws_lambda_layer_version" "layer" {
+  filename = "${path.module}/../temp/produles.zip"
+  source_code_hash = filebase64sha256("${path.module}/../temp/produles.zip")
+  layer_name = "converge-nuid-${terraform.workspace}"
+  compatible_runtimes = ["nodejs16.x"]
+}
+
+resource "aws_lambda_function" "node-lambda-furl" {
+	layers = [
+		aws_lambda_layer_version.layer.arn
+	]
+	filename = "${path.module}/../temp/dist.zip"
+	source_code_hash = filebase64sha256("${path.module}/../temp/dist.zip")
+  function_name    = "node-lambda-furl"
+  role             = aws_iam_role.lambda_role.arn
+  handler          = "index.handler"
+  runtime          = "nodejs16.x"
+  environment {
+		variables = {
+			NODE_ENV = "production"
+		}
+	}
 }
