@@ -23,8 +23,6 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
-  // console.log(`url: ${req.url}, path: ${path}, queryString: ${queryString}, query: ${JSON.stringify(query)}, headers: ${JSON.stringify(req.headers)}`);
-
   const event = {
     version: '2.0',
     routeKey: '$default',
@@ -37,6 +35,14 @@ const server = http.createServer(async (req, res) => {
   const context = {};
   const result = await app.run(event, context)
 
+  for (const header of Object.keys(result.headers)) {
+    res.setHeader(header, result.headers[header]);
+  }
+  if (result.cookies) {
+    for (const cookie of result.cookies) {
+      res.setHeader('set-cookie', cookie);
+    }
+  }
   res.statusCode = result.statusCode;
   res.end(result.body);
 });
