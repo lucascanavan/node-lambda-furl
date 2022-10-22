@@ -3,7 +3,13 @@ import lambdaApi from "lambda-api";
 const app = lambdaApi({ logger: true });
 
 app.get('*', async (req, res) => {
-  return { path: req.path, query: req.query };
+  return {
+    method: req.method,
+    path: req.path,
+    query: req.query,
+    multiValueQuery: req.multiValueQuery,
+    headers: req.headers
+  };
 });
 
 export const handler = async (event, context) => {
@@ -27,24 +33,24 @@ if (process.env.NODE_ENV !== 'production') {
     if (questionIndex > -1) {
       queryString = req.url.substr(questionIndex + 1);
       const searchParams = new URLSearchParams(queryString);
-
       for (const [key, value] of searchParams.entries()) {
         if (query[key]) {
-          query[key] = [query[key], value];
+          query[key] = [query[key], value].join(',');
         } else {
           query[key] = value;
         }
       }
     }
 
-    // console.log(`url: ${req.url}, path: ${path}, queryString: ${queryString}, query: ${JSON.stringify(query)}`);
+    // console.log(`url: ${req.url}, path: ${path}, queryString: ${queryString}, query: ${JSON.stringify(query)}, headers: ${JSON.stringify(req.headers)}`);
 
     const event = {
       version: '2.0',
       routeKey: '$default',
       rawPath: path,
       rawQueryString: queryString,
-      queryStringParameters: query
+      queryStringParameters: query,
+      headers: req.headers
     };
 
     const context = {};
